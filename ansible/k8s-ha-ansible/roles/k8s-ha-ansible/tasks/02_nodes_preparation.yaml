@@ -1,0 +1,292 @@
+- block:
+    - name: Install some packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      yum:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+        - ca-certificates
+        - curl
+        - gnupg2
+        - socat
+        - conntrack
+        - ipset
+        - wget
+        - git
+        - unzip
+        - tar
+        - yum-utils
+        - net-tools
+        - python3-pip
+        - iproute-tc
+
+    - name: Download helm binary
+      when: inventory_hostname == groups['master_servers'][0]
+      ansible.builtin.get_url:
+        url: https://get.helm.sh/helm-v{{helm_version}}-linux-amd64.tar.gz
+        dest: /tmp/helm-v{{helm_version}}-linux-amd64.tar.gz
+
+    - name: Unarchive helm tgz
+      when: inventory_hostname == groups['master_servers'][0]
+      ansible.builtin.unarchive:
+        src: /tmp/helm-v{{helm_version}}-linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copying helm binary into /usr/local/bin/ 
+      when: inventory_hostname == groups['master_servers'][0]
+      become: true
+      copy:
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        remote_src: yes
+        mode: '0777'
+
+    - name: Disable and stop firewalld service
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: firewalld
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: disable docker daemon
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: docker
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Disable SELinux from shell
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      shell: sudo setenforce 0
+      ignore_errors: true
+
+    - name: Disable SELinux
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      selinux:
+        state: disabled
+      ignore_errors: true
+
+    - name: Remove swapfile from /etc/fstab
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
+      ignore_errors: true
+
+    - name: Disable swap from shell
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      shell: sudo swapoff -a
+      ignore_errors: true
+
+    - name: Disable swap
+      become: true
+      when: (inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )) and (ansible_swaptotal_mb > 0)
+      command: swapoff -a
+      ignore_errors: true
+
+    - name: modprobe configuration
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      shell: |
+              sudo modprobe overlay
+              sudo modprobe br_netfilter
+
+    - name: Add config for k8s
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      blockinfile:
+        path: /etc/sysctl.d/99-kubernetes-cri.conf
+        block: |
+              net.bridge.bridge-nf-call-iptables = 1
+              net.ipv4.ip_forward = 1
+              net.bridge.bridge-nf-call-ip6tables = 1
+        create: yes
+
+    - name: Apply added k8s settings via sysctl
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      command: sudo sysctl --system
+
+    - name: Add config for containerd
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      blockinfile:
+        path: /etc/modules-load.d/containerd.conf
+        block: |
+              overlay
+              br_netfilter
+        create: yes
+
+    - name: Apply added containerd settings via sysctl
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      command: sudo sysctl --system
+
+    - name: Adding yum repository for Kubernetes
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.blockinfile:
+        path: /etc/yum.repos.d/kubernetes.repo
+        block: |
+          [kubernetes]
+          name=Kubernetes
+          baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+        create: yes
+
+    - name: Add repository for containerd
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      shell: yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/centos_o.repo
+
+    - name: update all packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      yum: name=* state=latest
+
+    - name: Install containerd package
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      yum:
+        state: present
+        name: 
+          - containerd.io-{{ containerd_version }}
+
+    - name: Copying containerd conf
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      copy:
+        src: files/containerd_config.toml
+        dest: /etc/containerd/config.toml
+
+    - name: Just force systemd to reload configs
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: start containerd service
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: containerd
+        state: restarted
+        enabled: true
+
+    - name: installing kubelet kubeadm kubectl
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.yum:
+        name:
+          - kubectl-{{ kubernetes_version }}
+          - kubelet-{{ kubernetes_version }}
+          - kubeadm-{{ kubernetes_version }}
+        state: installed
+
+    - name: Copying kubelet arg config to the first master node
+      become: true
+      when: inventory_hostname == groups['master_servers'][0]
+      template:
+        src: kubelet-k8s-master01ARGS.j2
+        dest: /etc/sysconfig/kubelet
+        mode: "0644"
+
+    - name: Copying kubelet arg config to the second master node
+      become: true
+      when: inventory_hostname == groups['master_servers'][1]
+      template:
+        src: kubelet-k8s-master02ARGS.j2
+        dest: /etc/sysconfig/kubelet
+        mode: "0644"
+
+    - name: Copying kubelet arg config to the third master node
+      become: true
+      when: inventory_hostname == groups['master_servers'][2]
+      template:
+        src: kubelet-k8s-master03ARGS.j2
+        dest: /etc/sysconfig/kubelet
+        mode: "0644"
+
+    - name: Copying kubelet arg config to the first worker node
+      become: true
+      when: inventory_hostname == groups['worker_servers'][0]
+      template:
+        src: kubelet-k8s-worker01ARGS.j2
+        dest: /etc/sysconfig/kubelet
+        mode: "0644"
+
+    - name: Copying kubelet arg config to the second worker node
+      become: true
+      when: inventory_hostname == groups['worker_servers'][1]
+      template:
+        src: kubelet-k8s-worker02ARGS.j2
+        dest: /etc/sysconfig/kubelet
+        mode: "0644"
+
+    - name: Copying kubelet arg config to the third worker node
+      become: true
+      when: inventory_hostname == groups['worker_servers'][2]
+      template:
+        src: kubelet-k8s-worker03ARGS.j2
+        dest: /etc/sysconfig/kubelet
+        mode: "0644"
+
+    - name: Just force systemd to reload configs
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: start kubelet service
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: kubelet
+        state: restarted
+        enabled: true
+
+    - name: Prevent kubectl and kubelet and kubeadm from being updated
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      community.general.yum_versionlock:
+        state: present
+        name:
+        - kubectl
+        - kubelet
+        - kubeadm
+        - containerd
+
+    - name: Copying chrony config to all servers
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      template:
+        src: chrony.conf.j2
+        dest: /etc/chrony.conf
+
+    - name: restart chrony service
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: chronyd
+        state: restarted
+        enabled: true

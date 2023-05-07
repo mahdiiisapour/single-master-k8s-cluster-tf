@@ -1,0 +1,41 @@
+- block:
+    - name: Copying custom ingress value file to the first master node
+      become: true
+      when: inventory_hostname == groups['master_servers'][0]
+      copy:
+        src: files/ingress-nginx-values.yaml
+        dest: /tmp/ingress-nginx-values.yaml
+
+    - name: Download ingress-nginx helm chart
+      when: inventory_hostname == groups['master_servers'][0]
+      ansible.builtin.get_url:
+        url: https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-{{ingress_nginx_version}}/ingress-nginx-{{ingress_nginx_version}}.tgz
+        dest: /tmp/ingress-nginx-{{ingress_nginx_version}}.tgz
+
+    - name: Unarchive ingress-nginx chart
+      when: inventory_hostname == groups['master_servers'][0]
+      ansible.builtin.unarchive:
+        src: /tmp/ingress-nginx-{{ingress_nginx_version}}.tgz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Deploy ingress-nginx chart from local path
+      when: inventory_hostname == groups['master_servers'][0]
+      kubernetes.core.helm:
+        name: ingress-nginx
+        chart_ref: /tmp/ingress-nginx
+        release_namespace: ingress-nginx
+        create_namespace: true
+        values_files:
+          - /tmp/ingress-nginx-values.yaml
+
+    - name: Pause for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
+      delegate_to: localhost
+
+    - name: remove repo directory
+      when: inventory_hostname == groups['master_servers'][0]
+      ansible.builtin.file:
+        path: /tmp/vanilla-k8s-helmcharts
+        state: absent

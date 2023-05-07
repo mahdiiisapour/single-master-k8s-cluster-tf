@@ -1,0 +1,7 @@
+---
+-  hosts: all_servers
+   become: false
+   roles:
+     - role: k8s-ha-ansible
+       vars: 
+         dir: vars/main.yml

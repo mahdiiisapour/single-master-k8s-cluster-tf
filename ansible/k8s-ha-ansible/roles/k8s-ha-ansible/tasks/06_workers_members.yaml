@@ -1,0 +1,36 @@
+- block:
+    - name: Copy worker token
+      when: inventory_hostname in groups['worker_servers']
+      become: true
+      copy:
+        src: /tmp/workertoken
+        dest: /tmp/join-command.sh
+        owner: root
+        group: root
+        mode: '0777'
+
+    - name: add workers to k8s cluster
+      when: inventory_hostname in groups['worker_servers']
+      become: true
+      command: sh /tmp/join-command.sh
+
+    - name: Pause for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
+      delegate_to: localhost
+
+    - name: restart kubelet service
+      become: true
+      when: inventory_hostname in groups['master_servers']
+      service:
+        name: kubelet
+        state: restarted
+        enabled: true
+    
+    #optional
+    - name: add worker label to the worker nodes
+      when: inventory_hostname == groups['master_servers'][0]
+      shell: |
+            kubectl label node {{WORKER01_HOST}} node-role.kubernetes.io/worker=worker
+            kubectl label node {{WORKER02_HOST}} node-role.kubernetes.io/worker=worker
+            kubectl label node {{WORKER03_HOST}} node-role.kubernetes.io/worker=worker

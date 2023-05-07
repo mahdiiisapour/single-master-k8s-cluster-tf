@@ -1,0 +1,17 @@
+[master_servers]
+%{ for index, group in ansible_group_master_servers ~}
+${hostname_master_servers[index]} ansible_host=${hostname_master_servers_ip[index]} 
+%{ endfor ~}
+
+[worker_servers]
+%{ for index, group in ansible_group_worker_servers ~}
+${hostname_worker_servers[index]} ansible_host=${hostname_worker_servers_ip[index]} 
+%{ endfor ~}
+
+[all_servers]
+%{ for index, group in ansible_group_master_servers ~}
+${hostname_master_servers[index]} ansible_host=${hostname_master_servers_ip[index]} 
+%{ endfor ~}
+%{ for index, group in ansible_group_worker_servers ~}
+${hostname_worker_servers[index]} ansible_host=${hostname_worker_servers_ip[index]} 
+%{ endfor ~}

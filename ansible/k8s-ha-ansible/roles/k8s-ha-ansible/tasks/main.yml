@@ -1,0 +1,8 @@
+---
+- include_tasks: 01_haproxy_keepalived.yaml
+- include_tasks: 02_nodes_preparation.yaml
+- include_tasks: 03_master_leader.yaml
+- include_tasks: 04_cilium.yaml
+- include_tasks: 05_master_members.yaml
+- include_tasks: 06_workers_members.yaml
+- include_tasks: 07_ingress_nginx.yaml
