@@ -125,11 +125,3 @@ variable "eth_worker02" {
 variable "eth_worker03" {
   default = "ens10"
 }
-
-variable "repo_url" {
-  default = "https://github.com/kaviankarimzadeh/helm-charts.git"
-}
-
-variable "branch_name" {
-  default = "main"
-}

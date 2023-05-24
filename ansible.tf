@@ -66,8 +66,6 @@ resource local_file ansible_vars {
       eth_worker01 : ${var.eth_worker01}
       eth_worker02 : ${var.eth_worker02}
       eth_worker03 : ${var.eth_worker03}
-      repo_url : ${var.repo_url}
-      branch_name : ${var.branch_name}
     EOT
   filename = "ansible/k8s-ha-ansible/roles/k8s-ha-ansible/vars/main.yml"
 }
@@ -77,4 +75,5 @@ resource "null_resource" "playbook" {
   provisioner "local-exec" {
     command = "sleep 45; export ANSIBLE_CONFIG=ansible/ansible.cfg; ansible-playbook ansible/k8s-ha-ansible/k8s-ha-deployment.yaml"
   }
+  depends_on = [ hcloud_server.kube-master, hcloud_server.kube-worker ]
 }
