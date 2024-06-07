@@ -16,21 +16,21 @@ vrrp_script chk_haproxy {
 vrrp_instance haproxy-vip {
   state BACKUP
   priority 100
-  interface {{eth_master02}}                          # Network card
+  interface {{eth_name}} # Network card
   virtual_router_id 60
   advert_int 1
   authentication {
     auth_type PASS
     auth_pass 1111
   }
-  unicast_src_ip {{MASTER02_IP}}            # The IP address of this machine
+  unicast_src_ip {{ hostvars[groups['master_servers'][1]].ansible_host }}            # The IP address of this machine
   unicast_peer {
-    {{MASTER01_IP}}                         # The IP address of peer machines
-    {{MASTER03_IP}}                         # The IP address of peer machines
+    {{ hostvars[groups['master_servers'][0]].ansible_host }}                         # The IP address of peer machines
+    {{ hostvars[groups['master_servers'][2]].ansible_host }}                         # The IP address of peer machines
   }
    
   virtual_ipaddress {
-    {{VIP_MASTERS}}                                 # The VIP address
+    {{VIP_MASTERS}} # The VIP address
   }
    
   track_script {
