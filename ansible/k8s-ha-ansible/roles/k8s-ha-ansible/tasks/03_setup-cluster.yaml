@@ -1,0 +1,120 @@
+- block:
+    - name: Copying kubeadm init config to master01
+      become: true
+      when: inventory_hostname == groups['master_servers'][0]
+      template:
+        src: init.config.j2
+        dest: "/opt/config.yaml"
+        mode: "0644"
+
+    - name: Initialize the cluster
+      when: inventory_hostname == groups['master_servers'][0]
+      ansible.builtin.shell: sudo kubeadm init --upload-certs --config=/opt/config.yaml
+      register: output
+
+    - name: Saving token info
+      when: inventory_hostname == groups['master_servers'][0]
+      delegate_to: localhost
+      copy:
+        content: "{{ output.stdout }}"
+        dest: "/tmp/token"
+      ignore_errors: true
+
+    - name: Generating token master
+      local_action: shell sed -n 73,75p /tmp/token > /tmp/mastertoken
+
+    - name: Generating token worker
+      local_action: shell sed -n 83,85p /tmp/token > /tmp/workertoken
+
+    - name: Creting kubeconfig directory
+      become: true
+      when: inventory_hostname == groups['master_servers'][0]
+      file:
+        path: "~/.kube"
+        state: directory
+        owner: "{{remote_username}}"
+        group: "{{remote_username}}"
+
+    - name: Copying kubeconf to config folder at home directory
+      become: true
+      when: inventory_hostname == groups['master_servers'][0]
+      copy: 
+        src: /etc/kubernetes/admin.conf 
+        dest: "~/.kube/config"
+        owner: "{{remote_username}}"
+        group: "{{remote_username}}"
+        remote_src: yes
+
+    - name: Copying adding master script to master nodes
+      when: inventory_hostname in groups['master_servers']
+      become: true
+      copy:
+        src: /tmp/mastertoken
+        dest: /tmp/join-command.sh
+        owner: root
+        group: root
+        mode: '0777'
+
+    - name: Updating token command for master02
+      become: true
+      when: inventory_hostname == groups['master_servers'][1]
+      shell: sed -i '3s|$|& --apiserver-advertise-address {{ hostvars[groups['master_servers'][1]].ansible_host }} --apiserver-bind-port {{APISERVER_SRC_PORT}} |' /tmp/join-command.sh
+
+    - name: Updating token command for master03
+      become: true
+      when: inventory_hostname == groups['master_servers'][2]
+      shell: sed -i '3s|$|& --apiserver-advertise-address {{ hostvars[groups['master_servers'][2]].ansible_host }} --apiserver-bind-port {{APISERVER_SRC_PORT}} |' /tmp/join-command.sh
+
+    - name: Adding additional master to k8s cluster
+      become: true
+      when: inventory_hostname in ((groups['master_servers'][1] + groups['master_servers'][2]))
+      command: sh /tmp/join-command.sh
+
+    - name: Sleep for 15 seconds and continue with play
+      ansible.builtin.wait_for:
+        timeout: 15
+      delegate_to: localhost
+
+    - name: Restarting kubelet service
+      become: true
+      when: inventory_hostname in groups['master_servers']
+      service:
+        name: kubelet
+        state: restarted
+        enabled: true
+
+    - name: Copying worker token
+      when: inventory_hostname in groups['worker_servers']
+      become: true
+      copy:
+        src: /tmp/workertoken
+        dest: /tmp/join-command.sh
+        owner: root
+        group: root
+        mode: '0777'
+
+    - name: Adding workers to k8s cluster
+      when: inventory_hostname in groups['worker_servers']
+      become: true
+      command: sh /tmp/join-command.sh
+
+    - name: Sleep for 15 seconds and continue with play
+      ansible.builtin.wait_for:
+        timeout: 15
+      delegate_to: localhost
+
+    - name: Restarting kubelet service
+      become: true
+      when: inventory_hostname in groups['master_servers']
+      service:
+        name: kubelet
+        state: restarted
+        enabled: true
+    
+    #optional
+    - name: add worker label to workers
+      when: inventory_hostname == groups['master_servers'][0]
+      shell: |
+            kubectl label node {{ hostvars[groups['worker_servers'][0]].ansible_hostname }} node-role.kubernetes.io/worker=worker
+            kubectl label node {{ hostvars[groups['worker_servers'][1]].ansible_hostname }} node-role.kubernetes.io/worker=worker
+            kubectl label node {{ hostvars[groups['worker_servers'][2]].ansible_hostname }} node-role.kubernetes.io/worker=worker

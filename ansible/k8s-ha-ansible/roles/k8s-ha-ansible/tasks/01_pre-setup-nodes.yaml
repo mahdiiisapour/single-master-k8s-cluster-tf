@@ -1,0 +1,299 @@
+- block:
+    - name: Disable and stop firewalld service
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: firewalld
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Disable SELinux
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      block:
+        - name: Disable SELinux from shell
+          ansible.builtin.shell: sudo setenforce 0
+          ignore_errors: true
+
+        - name: Disable SELinux
+          ansible.posix.selinux:
+            state: disabled
+          ignore_errors: true
+
+    - name: Disable swap
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      block:
+        - name: Remove swapfile from /etc/fstab
+          ansible.builtin.mount:
+            name: "{{ item }}"
+            fstype: swap
+            state: absent
+          with_items:
+            - swap
+            - none
+          ignore_errors: true
+
+        - name: Disable swap from shell
+          ansible.builtin.shell: sudo swapoff -a
+          ignore_errors: true
+
+        - name: Disable swap
+          ansible.builtin.command: swapoff -a
+          when: ansible_swaptotal_mb > 0
+          ignore_errors: true
+
+    - name: Disable docker daemon
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: docker
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Install yum-utils
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.yum:
+        name: yum-utils
+        state: present
+        update_cache: yes
+
+    - name: Add repository for containerd
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      shell: yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/centos_o.repo
+
+    - name: Add kubernetes repository
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.blockinfile:
+        path: /etc/yum.repos.d/kubernetes.repo
+        block: |
+          [kubernetes]
+          name=Kubernetes
+          baseurl=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version }}/rpm/
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version }}/rpm/repodata/repomd.xml.key
+          exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+        create: yes
+
+    - name: Update all packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.yum: 
+        name: '*' 
+        state: latest
+        disable_gpg_check: true
+
+    - name: Force systemd to reload configs
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: modprobe configuration
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      shell: |
+              sudo modprobe overlay
+              sudo modprobe br_netfilter
+
+    - name: Add config for k8s
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      blockinfile:
+        path: /etc/sysctl.d/99-kubernetes-cri.conf
+        block: |
+              net.bridge.bridge-nf-call-iptables = 1
+              net.ipv4.ip_forward = 1
+              net.bridge.bridge-nf-call-ip6tables = 1
+        create: yes
+
+    - name: Install some packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.yum:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+        - ca-certificates
+        - curl
+        - gnupg2
+        - socat
+        - conntrack
+        - ipset
+        - wget
+        - git
+        - unzip
+        - tar
+        - yum-utils
+        - net-tools
+        - python3-pip
+        - iproute-tc
+        - yum-plugin-versionlock
+        - psmisc
+        - keepalived-{{ keepalived_version }}
+
+    - name: Add config for containerd
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      blockinfile:
+        path: /etc/modules-load.d/containerd.conf
+        block: |
+              overlay
+              br_netfilter
+        create: yes
+
+    - name: Apply added settings via sysctl
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      command: sudo sysctl --system
+
+    - name: Install containerd package
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.yum:
+        state: present
+        name: 
+          - containerd.io-{{ containerd_version }}
+
+    - name: initiate a default containerd config
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+      ignore_errors: true
+
+    - name: Modify SystemdCgroup setting
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/containerd/config.toml
+        regexp: '^(\s*)SystemdCgroup\s*=\s*false'
+        line: '            SystemdCgroup = true'
+      notify: restart_containerd
+
+    - name: installing kubelet kubeadm kubectl
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.yum:
+        name:
+          - kubectl-{{ kubernetes_version }}
+          - kubelet-{{ kubernetes_version }}
+          - kubeadm-{{ kubernetes_version }}
+        state: installed
+
+    - name: Add KUBELET_EXTRA_ARGS to kubelet config - Get server IP
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      set_fact:
+        server_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+      delegate_to: localhost
+
+    - name: Add KUBELET_EXTRA_ARGS to kubelet config
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.lineinfile:
+        path: /etc/sysconfig/kubelet
+        mode: "0644"
+        line: "KUBELET_EXTRA_ARGS=--node-ip={{ server_ip }}"
+        create: yes
+
+    - name: Just force systemd to reload configs
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Start containerd/kubelet service
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: "{{item}}"
+        enabled: true
+        state: restarted
+      ignore_errors: true
+      with_items:
+        - containerd
+        - kubelet
+
+    - name: Copying keepalived conf to master01
+      become: true
+      when: inventory_hostname == groups['master_servers'][0]
+      template:
+        src: keepalivedm1.j2
+        dest: /etc/keepalived/keepalived.conf
+        mode: "0644"
+
+    - name: Copying keepalived conf to master02
+      become: true
+      when: inventory_hostname == groups['master_servers'][1]
+      template:
+        src: keepalivedm2.j2
+        dest: /etc/keepalived/keepalived.conf
+        mode: "0644"
+
+    - name: Copying keepalived conf to master03
+      become: true
+      when: inventory_hostname == groups['master_servers'][2]
+      template:
+        src: keepalivedm3.j2
+        dest: /etc/keepalived/keepalived.conf
+        mode: "0644"
+
+    - name: Copying keepalived conf to worker01
+      become: true
+      when: inventory_hostname == groups['worker_servers'][0]
+      template:
+        src: keepalivedw1.j2
+        dest: /etc/keepalived/keepalived.conf
+        mode: "0644"
+
+    - name: Copying keepalived conf to worker02
+      become: true
+      when: inventory_hostname == groups['worker_servers'][1]
+      template:
+        src: keepalivedw2.j2
+        dest: /etc/keepalived/keepalived.conf
+        mode: "0644"
+
+    - name: Copying keepalived conf to worker03
+      become: true
+      when: inventory_hostname == groups['worker_servers'][2]
+      template:
+        src: keepalivedw3.j2
+        dest: /etc/keepalived/keepalived.conf
+        mode: "0644"
+
+    - name: Force systemd to reload configs
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Restart and enable haproxy and keepalived on master nodes
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      service:
+        name: keepalived
+        enabled: true
+        state: restarted
+
+    - name: Prevent kubectl and kubelet and kubeadm from being updated
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      community.general.yum_versionlock:
+        state: present
+        name:
+        - kubectl
+        - kubelet
+        - kubeadm
+        - containerd
+        - keepalived
