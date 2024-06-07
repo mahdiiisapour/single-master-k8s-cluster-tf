@@ -1,3 +1,0 @@
-{% for host in groups.all_servers %}
-{{ hostvars[host].ansible_ens10.ipv4.address }} {{ hostvars[host].ansible_hostname }}
-{% endfor %}
