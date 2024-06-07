@@ -81,6 +81,7 @@ variable "ingress_nginx_version" {
 variable "helm_version" {
   default = "3.15.1"
 }
+
 variable "ip_range" {
   default = "10.0.1.0/24"
 }
