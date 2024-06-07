@@ -12,6 +12,7 @@ resource "hcloud_server" "kube-master" {
   network {
     network_id = hcloud_network.hc_private.id
   }
+
   user_data = file("user_data.yml")
   public_net {
     ipv4_enabled = true
@@ -36,11 +37,13 @@ resource "hcloud_server" "kube-worker" {
   network {
     network_id = hcloud_network.hc_private.id
   }
+
   user_data = file("user_data.yml")
   public_net {
     ipv4_enabled = true
     ipv6_enabled = false
   }
+  
   depends_on = [
     hcloud_network_subnet.hc_private_subnet
   ]
