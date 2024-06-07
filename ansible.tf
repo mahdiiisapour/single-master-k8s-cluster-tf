@@ -31,18 +31,6 @@ resource "local_file" "ansible_cfg" {
 
 resource local_file ansible_vars {
   content = <<-EOT
-      MASTER01_HOST : ${hcloud_server.kube-master[0].name}
-      MASTER01_IP : ${hcloud_server.kube-master[0].ipv4_address}
-      MASTER02_HOST : ${hcloud_server.kube-master[1].name}
-      MASTER02_IP : ${hcloud_server.kube-master[1].ipv4_address}
-      MASTER03_HOST : ${hcloud_server.kube-master[2].name}
-      MASTER03_IP : ${hcloud_server.kube-master[2].ipv4_address}
-      WORKER01_HOST : ${hcloud_server.kube-worker[0].name}
-      WORKER01_IP : ${hcloud_server.kube-worker[0].ipv4_address}
-      WORKER02_HOST : ${hcloud_server.kube-worker[1].name}
-      WORKER02_IP : ${hcloud_server.kube-worker[1].ipv4_address}
-      WORKER03_HOST : ${hcloud_server.kube-worker[2].name}
-      WORKER03_IP : ${hcloud_server.kube-worker[2].ipv4_address}
       VIP_MASTERS : ${var.lb_masters_private_ip}
       VIP_WORKERS : ${var.lb_workers_private_ip}
       APISERVER_DEST_PORT : ${var.services_masters_port}
@@ -50,22 +38,17 @@ resource local_file ansible_vars {
       cp_endpoint : '${hcloud_load_balancer.masters_lb.ipv4}:${var.services_masters_port}'
       home_directory : ${var.home_dir}
       remote_username : ${var.remote_usr}
-      kubernetes_version : ${var.kubernetes_version}
-      helm_version : ${var.helm_version}
-      containerd_version : ${var.containerd_version}
-      cilium_version : ${var.cilium_version}
       cri_socket : ${var.cri_socket}
       pod_subnet : ${var.pod_subnet}
       cluster_name : ${var.cluster_name}
+      kubernetes_version : ${var.kubernetes_version}
+      k8s_repo_version: ${var.k8s_repo_version}
+      helm_version : ${var.helm_version}
+      containerd_version : ${var.containerd_version}
+      cilium_version : ${var.cilium_version}
       haproxy_version : ${var.haproxy_version}
       keepalived_version : ${var.keepalived_version}
       ingress_nginx_version: ${var.ingress_nginx_version}
-      eth_master01 : ${var.eth_master01}
-      eth_master02 : ${var.eth_master02}
-      eth_master03 : ${var.eth_master03}
-      eth_worker01 : ${var.eth_worker01}
-      eth_worker02 : ${var.eth_worker02}
-      eth_worker03 : ${var.eth_worker03}
     EOT
   filename = "ansible/k8s-ha-ansible/roles/k8s-ha-ansible/vars/main.yml"
 }
