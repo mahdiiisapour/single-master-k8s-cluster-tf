@@ -58,6 +58,10 @@ variable "kubernetes_version" {
   default = "1.30.1"
 }
 
+variable "k8s_repo_version" {
+  default = "1.30"
+}
+
 variable "containerd_version" {
   default = "1.6.32-3.1.el8"
 }
@@ -98,26 +102,6 @@ variable "pod_subnet" {
   default = "10.244.0.0/20"
 }
 
-variable "eth_master01" {
-  default = "ens10"
-}
-
-variable "eth_master02" {
-  default = "ens10"
-}
-
-variable "eth_master03" {
-  default = "ens10"
-}
-
-variable "eth_worker01" {
-  default = "ens10"
-}
-
-variable "eth_worker02" {
-  default = "ens10"
-}
-
-variable "eth_worker03" {
+variable "eth_name" {
   default = "ens10"
 }
