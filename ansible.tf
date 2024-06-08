@@ -33,22 +33,22 @@ resource local_file ansible_vars {
   content = <<-EOT
       VIP_MASTERS : ${var.lb_masters_private_ip}
       VIP_WORKERS : ${var.lb_workers_private_ip}
-      APISERVER_DEST_PORT : ${var.services_masters_port}
       APISERVER_SRC_PORT : ${var.services_masters_source_port}
-      cp_endpoint : '${hcloud_load_balancer.masters_lb.ipv4}:${var.services_masters_port}'
+      cp_endpoint : '${hcloud_load_balancer.masters_lb.ipv4}:${var.services_masters_source_port}'
       home_directory : ${var.home_dir}
       remote_username : ${var.remote_usr}
       cri_socket : ${var.cri_socket}
       pod_subnet : ${var.pod_subnet}
       cluster_name : ${var.cluster_name}
       kubernetes_version : ${var.kubernetes_version}
-      k8s_repo_version: ${var.k8s_repo_version}
+      k8s_repo_version: '${var.k8s_repo_version}'
       helm_version : ${var.helm_version}
       containerd_version : ${var.containerd_version}
       cilium_version : ${var.cilium_version}
       haproxy_version : ${var.haproxy_version}
       keepalived_version : ${var.keepalived_version}
       ingress_nginx_version: ${var.ingress_nginx_version}
+      eth_name: ${var.eth_name}
     EOT
   filename = "ansible/k8s-ha-ansible/roles/k8s-ha-ansible/vars/main.yml"
 }
