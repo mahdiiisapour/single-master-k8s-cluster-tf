@@ -3,7 +3,7 @@ variable "hcloud_token" {
 }
 
 variable "location" {
-  default = "fsn1"
+  default = "nbg1"
 }
 
 variable "instances" {
@@ -15,15 +15,11 @@ variable "server_type" {
 }
 
 variable "os_type" {
-  default = "alma-8"
+  default = "rocky-8"
 }
 
 variable "services_protocol" {
   default = "tcp"
-}
-
-variable "services_masters_port" {
-  default = "6443"
 }
 
 variable "services_masters_source_port" {
