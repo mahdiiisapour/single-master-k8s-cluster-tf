@@ -1,4 +1,20 @@
 - block:
+    - name: Update all packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.yum: 
+        name: '*' 
+        state: latest
+        disable_gpg_check: true
+
+    - name: Remove kubernetes repository file
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.file:
+        path: /etc/yum.repos.d/kubernetes.repo
+        state: absent
+      ignore_errors: true
+
     - name: Disable and stop firewalld service
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
@@ -76,11 +92,10 @@
         block: |
           [kubernetes]
           name=Kubernetes
-          baseurl=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version }}/rpm/
+          baseurl=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version | string }}/rpm/
           enabled=1
           gpgcheck=1
-          gpgkey=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version }}/rpm/repodata/repomd.xml.key
-          exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+          gpgkey=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version | string }}/rpm/repodata/repomd.xml.key
         create: yes
 
     - name: Update all packages
@@ -180,6 +195,15 @@
         line: '            SystemdCgroup = true'
       notify: restart_containerd
 
+    - name: Modify pause image tag
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      become: true
+      ansible.builtin.replace:
+        path: /etc/containerd/config.toml
+        regexp: 'pause:3.6'
+        replace: 'pause:3.9'
+      notify: restart_containerd
+
     - name: installing kubelet kubeadm kubectl
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
@@ -224,29 +248,13 @@
         - containerd
         - kubelet
 
-    - name: Copying keepalived conf to master01
+    - name: Install keepalived on worker nodes for nginx ingress
       become: true
-      when: inventory_hostname == groups['master_servers'][0]
-      template:
-        src: keepalivedm1.j2
-        dest: /etc/keepalived/keepalived.conf
-        mode: "0644"
-
-    - name: Copying keepalived conf to master02
-      become: true
-      when: inventory_hostname == groups['master_servers'][1]
-      template:
-        src: keepalivedm2.j2
-        dest: /etc/keepalived/keepalived.conf
-        mode: "0644"
-
-    - name: Copying keepalived conf to master03
-      become: true
-      when: inventory_hostname == groups['master_servers'][2]
-      template:
-        src: keepalivedm3.j2
-        dest: /etc/keepalived/keepalived.conf
-        mode: "0644"
+      when: inventory_hostname in groups['worker_servers']
+      ansible.builtin.yum:
+        name: keepalived-{{ keepalived_version }}
+        state: present
+        update_cache: yes
 
     - name: Copying keepalived conf to worker01
       become: true
@@ -278,9 +286,9 @@
       ansible.builtin.systemd:
         daemon_reload: yes
 
-    - name: Restart and enable haproxy and keepalived on master nodes
+    - name: Restart and enable keepalived on sll nodes
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['worker_servers']
       service:
         name: keepalived
         enabled: true
@@ -295,5 +303,6 @@
         - kubectl
         - kubelet
         - kubeadm
-        - containerd
-        - keepalived
+        - cri-tools 
+        - kubernetes-cni
+        - containerd.io
