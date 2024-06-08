@@ -1,5 +1,4 @@
 ---
 - include_tasks: 01_pre-setup-nodes.yaml
-- include_tasks: 02_pre-setup-masters.yaml
-- include_tasks: 03_setup-cluster.yaml
-- include_tasks: 04_04_post-setup.yaml
+- include_tasks: 02_setup-cluster.yaml
+- include_tasks: 03_post-setup.yaml
