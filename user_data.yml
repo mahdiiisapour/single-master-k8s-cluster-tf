@@ -1,4 +1,6 @@
 #cloud-config
+package_update: true
+package_upgrade: true
 users:
   - name: itman
     gecos: Ansible User
@@ -7,6 +9,4 @@ users:
     shell: /bin/bash
     lock_passwd: true
     ssh_authorized_keys:
-      - <paste-your-public-key-here>
-package_update: true
-package_upgrade: true
+      - '<>'
