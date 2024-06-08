@@ -5,29 +5,27 @@ resource "hcloud_load_balancer" "masters_lb" {
   labels = {
     type = "masters_lb"
   }
-
-  dynamic "target" {
-    for_each = hcloud_server.kube-master
-    content {
-      type      = "server"
-      server_id = target.value["id"]
-    }
-  }
-
   algorithm {
     type = "round_robin"
   }
 }
 
+resource "hcloud_load_balancer_target" "load_balancer_master_target" {
+  count            = var.instances
+  type             = "server"
+  load_balancer_id = hcloud_load_balancer.masters_lb.id
+  server_id        = hcloud_server.kube-master[count.index].id
+}
+
 resource "hcloud_load_balancer_service" "masters_service" {
   load_balancer_id = hcloud_load_balancer.masters_lb.id
   protocol         = var.services_protocol
-  listen_port      = var.services_masters_port
-  destination_port = var.services_masters_port
+  listen_port      = var.services_masters_source_port
+  destination_port = var.services_masters_source_port
 
   health_check {
     protocol = var.services_protocol
-    port     = var.services_masters_port
+    port     = var.services_masters_source_port
     interval = "10"
     timeout  = "10"
     http {

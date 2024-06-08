@@ -6,17 +6,16 @@ resource "hcloud_load_balancer" "workers_lb" {
     type = "workers_lb"
   }
 
-  dynamic "target" {
-    for_each = hcloud_server.kube-worker
-    content {
-      type      = "server"
-      server_id = target.value["id"]
-    }
-  }
-
   algorithm {
     type = "round_robin"
   }
+}
+
+resource "hcloud_load_balancer_target" "load_balancer_worker_target" {
+  count            = var.instances
+  type             = "server"
+  load_balancer_id = hcloud_load_balancer.workers_lb.id
+  server_id        = hcloud_server.kube-worker[count.index].id
 }
 
 resource "hcloud_load_balancer_service" "workers_service_1" {
