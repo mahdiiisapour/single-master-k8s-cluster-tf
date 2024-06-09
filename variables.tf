@@ -15,7 +15,7 @@ variable "server_type" {
 }
 
 variable "os_type" {
-  default = "rocky-8"
+  default = "ubuntu-22.04"
 }
 
 variable "services_protocol" {
@@ -50,6 +50,10 @@ variable "cluster_name" {
   default = "cluster.local"
 }
 
+variable "kubernetes_package_version" {
+  default = "1.30.1-1.1"
+}
+
 variable "kubernetes_version" {
   default = "1.30.1"
 }
@@ -59,15 +63,11 @@ variable "k8s_repo_version" {
 }
 
 variable "containerd_version" {
-  default = "1.6.32-3.1.el8"
-}
-
-variable "haproxy_version" {
-  default = "1.8.27-5.el8"
+  default = "1.7.2-0ubuntu1~22.04.1"
 }
 
 variable "keepalived_version" {
-  default = "2.1.5-9.el8"
+  default = "1:2.2.4-0.2build1"
 }
 
 variable "cilium_version" {
