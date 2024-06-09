@@ -1,25 +1,33 @@
 
-```
-Deploy a Kubernetes HA (multi-masters) Cluster using Terraform/Ansible on Alma Linux/Rocky OS - (Hetzner)
-```
+### Deploy a Kubernetes HA (multi-masters) Cluster using Terraform/Ansible on Ubuntu - (Hetzner)
 
-```
-First we need to obtain a API token from our Hetzner account.
-Project >> Security >> API token >> Generate API token
-```
+#### First we need to obtain a API token from our Hetzner account.
 
-```
-SSH_KEY config:
-update user_data.yml and ssh.tf with correct info.
-```
+`Project >> Security >> API token >> Generate API token`
 
-```
-variable config:
-update variable.tf with correct info.
-```
+#### Updating SSH KEY info
+`user_data.yml`
 
+`ssh.tf`
+
+#### Updating Variables
+'variable.tf'
+
+##### important ones are:
+`location`
+
+`server_type`
+
+`kubernetes_package_version`
+
+`kubernetes_version`
+
+`k8s_repo_version`
+
+`eth_name`
+
+#### Installing Python
 ```
-install Python or skip if it's already present on your local machine
 {
     sudo yum -y groupinstall "Development Tools"
     sudo yum -y install openssl-devel bzip2-devel libffi-devel xz-devel wget
@@ -33,8 +41,8 @@ install Python or skip if it's already present on your local machine
 }
 ```
 
+#### Installing Ansible
 ```
-install Ansible or skip if it's already present on your local machine
 {
     cd
     python3.8 -m venv project
@@ -44,16 +52,17 @@ install Ansible or skip if it's already present on your local machine
 }
 ```
 
+#### Installing Ansible Collection
 ```
-install required collections for ansible:
 {
     ansible-galaxy collection install ansible.posix
     ansible-galaxy collection install kubernetes.core
 }
 ```
 
+#### Running Terraform
+(it will prompt you for API_TOKEN)
 ```
-Run the following commmands: (it will prompt you for API_TOKEN)
 terraform init
 terraform plan
 terraform apply
