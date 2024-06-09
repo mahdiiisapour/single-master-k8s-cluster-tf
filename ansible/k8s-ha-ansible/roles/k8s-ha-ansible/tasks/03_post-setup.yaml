@@ -69,9 +69,9 @@
         - value: ipam.mode=kubernetes
         - value: ipam.operator.clusterPoolIPv4PodCIDR="{{pod_subnet}}"
 
-    - name: Pause for 30 seconds
+    - name: Pause for 40 seconds
       ansible.builtin.pause:
-        seconds: 30
+        seconds: 40
       delegate_to: localhost
 
     - name: recreate all cluster pods after Cilium installation

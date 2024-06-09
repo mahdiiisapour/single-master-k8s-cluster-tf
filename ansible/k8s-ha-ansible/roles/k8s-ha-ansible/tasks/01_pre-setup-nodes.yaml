@@ -1,42 +1,4 @@
 - block:
-    - name: Update all packages
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.yum: 
-        name: '*' 
-        state: latest
-        disable_gpg_check: true
-
-    - name: Remove kubernetes repository file
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.file:
-        path: /etc/yum.repos.d/kubernetes.repo
-        state: absent
-      ignore_errors: true
-
-    - name: Disable and stop firewalld service
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      service:
-        name: firewalld
-        state: stopped
-        enabled: false
-      ignore_errors: true
-
-    - name: Disable SELinux
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      block:
-        - name: Disable SELinux from shell
-          ansible.builtin.shell: sudo setenforce 0
-          ignore_errors: true
-
-        - name: Disable SELinux
-          ansible.posix.selinux:
-            state: disabled
-          ignore_errors: true
-
     - name: Disable swap
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
@@ -60,58 +22,6 @@
           when: ansible_swaptotal_mb > 0
           ignore_errors: true
 
-    - name: Disable docker daemon
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      service:
-        name: docker
-        state: stopped
-        enabled: false
-      ignore_errors: true
-
-    - name: Install yum-utils
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.yum:
-        name: yum-utils
-        state: present
-        update_cache: yes
-
-    - name: Add repository for containerd
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      shell: yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-      args:
-        creates: /etc/yum.repos.d/centos_o.repo
-
-    - name: Add kubernetes repository
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.blockinfile:
-        path: /etc/yum.repos.d/kubernetes.repo
-        block: |
-          [kubernetes]
-          name=Kubernetes
-          baseurl=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version | string }}/rpm/
-          enabled=1
-          gpgcheck=1
-          gpgkey=https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version | string }}/rpm/repodata/repomd.xml.key
-        create: yes
-
-    - name: Update all packages
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.yum: 
-        name: '*' 
-        state: latest
-        disable_gpg_check: true
-
-    - name: Force systemd to reload configs
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.systemd:
-        daemon_reload: yes
-
     - name: modprobe configuration
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
@@ -130,16 +40,31 @@
               net.bridge.bridge-nf-call-ip6tables = 1
         create: yes
 
+    - name: Force systemd to reload configs
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Upgrade all packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+
     - name: Install some packages
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.yum:
+      ansible.builtin.apt:
         name: "{{ packages }}"
         state: present
         update_cache: yes
       vars:
         packages:
+        - apt-transport-https
         - ca-certificates
+        - gpg
         - curl
         - gnupg2
         - socat
@@ -149,13 +74,61 @@
         - git
         - unzip
         - tar
-        - yum-utils
         - net-tools
         - python3-pip
-        - iproute-tc
-        - yum-plugin-versionlock
+        - iproute2
         - psmisc
-        - keepalived-{{ keepalived_version }}
+        - keepalived={{ keepalived_version }}
+
+    - name: Creting keyrings directory
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      file:
+        path: "/etc/apt/keyrings"
+        state: directory
+        mode: "0755"
+
+    - name: Download the public signing key for the Kubernetes package and add repository
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      become: true
+      block:
+        - name: download gpg kubernetes
+          file:
+            path: "/etc/apt/keyrings/Release.key"
+            state: absent
+
+        - name: remove the old one if exists
+          ansible.builtin.get_url:
+            url: https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version | string }}/deb/Release.key
+            dest: /etc/apt/keyrings/Release.key
+        
+        - name: dearmore the key
+          become: true
+          shell: rm -f /etc/apt/keyrings/kubernetes-apt-keyring.gpg; gpg -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg --dearmor /etc/apt/keyrings/Release.key
+
+        - name: add gpg kubernetes
+          ansible.builtin.apt_repository:
+            repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version | string }}/deb/ /"
+            filename: kubernetes
+            state: present
+
+    - name: Upgrade all packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+
+    - name: Install kubelet, kubeadm, and kubectl packages
+      become: true
+      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      ansible.builtin.apt:
+        name:
+          - kubelet={{ kubernetes_package_version }}
+          - kubeadm={{ kubernetes_package_version }}
+          - kubectl={{ kubernetes_package_version }}
+        state: present
+        update_cache: yes
 
     - name: Add config for containerd
       become: true
@@ -175,15 +148,15 @@
     - name: Install containerd package
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.yum:
+      ansible.builtin.apt:
         state: present
         name: 
-          - containerd.io-{{ containerd_version }}
+          - containerd={{ containerd_version }}
 
     - name: initiate a default containerd config
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+      ansible.builtin.shell: mkdir /etc/containerd; containerd config default > /etc/containerd/config.toml
       ignore_errors: true
 
     - name: Modify SystemdCgroup setting
@@ -193,26 +166,14 @@
         path: /etc/containerd/config.toml
         regexp: '^(\s*)SystemdCgroup\s*=\s*false'
         line: '            SystemdCgroup = true'
-      notify: restart_containerd
 
     - name: Modify pause image tag
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
       become: true
       ansible.builtin.replace:
         path: /etc/containerd/config.toml
-        regexp: 'pause:3.6'
+        regexp: 'pause:\d+\.\d+'
         replace: 'pause:3.9'
-      notify: restart_containerd
-
-    - name: installing kubelet kubeadm kubectl
-      become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      ansible.builtin.yum:
-        name:
-          - kubectl-{{ kubernetes_version }}
-          - kubelet-{{ kubernetes_version }}
-          - kubeadm-{{ kubernetes_version }}
-        state: installed
 
     - name: Add KUBELET_EXTRA_ARGS to kubelet config - Get server IP
       become: true
@@ -248,14 +209,6 @@
         - containerd
         - kubelet
 
-    - name: Install keepalived on worker nodes for nginx ingress
-      become: true
-      when: inventory_hostname in groups['worker_servers']
-      ansible.builtin.yum:
-        name: keepalived-{{ keepalived_version }}
-        state: present
-        update_cache: yes
-
     - name: Copying keepalived conf to worker01
       become: true
       when: inventory_hostname == groups['worker_servers'][0]
@@ -286,7 +239,7 @@
       ansible.builtin.systemd:
         daemon_reload: yes
 
-    - name: Restart and enable keepalived on sll nodes
+    - name: Restart and enable keepalived on all nodes
       become: true
       when: inventory_hostname in groups['worker_servers']
       service:
@@ -294,15 +247,9 @@
         enabled: true
         state: restarted
 
-    - name: Prevent kubectl and kubelet and kubeadm from being updated
+    - name: Prevent kubectl, kubelet, kubeadm, cri-tools, kubernetes-cni, and containerd.io from being updated
       become: true
       when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
-      community.general.yum_versionlock:
-        state: present
-        name:
-        - kubectl
-        - kubelet
-        - kubeadm
-        - cri-tools 
-        - kubernetes-cni
-        - containerd.io
+      ansible.builtin.shell:
+        cmd: >
+          apt-mark hold kubectl kubelet kubeadm cri-tools kubernetes-cni containerd
