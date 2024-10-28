@@ -28,11 +28,6 @@
         remote_src: yes
         mode: '0777'
 
-    - name: Install pyyaml module for Cilium on the first master
-      become: true
-      when: inventory_hostname == groups['master_servers'][0]
-      shell: sudo pip3 install pyyaml
-
     - name: Download cilium helm chart tgz file
       when: inventory_hostname == groups['master_servers'][0]
       ansible.builtin.get_url:
@@ -76,7 +71,7 @@
 
     - name: recreate all cluster pods after Cilium installation
       when: inventory_hostname == groups['master_servers'][0]
-      shell: kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,HOSTNETWORK:.spec.hostNetwork --no-headers=true | grep '<none>' | awk '{print "-n "$1" "$2}' | xargs -L 1 -r kubectl delete pod
+      shell: kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,HOSTNETWORK:.spec.hostNetwork --no-headers=true | grep '<none>' | awk '{print "-n "$1" "$2}' | xargs -L 1 -r kubectl delete pod --force
       ignore_errors: true
 
     - name: Copying custom ingress value file to the first master node
