@@ -99,5 +99,5 @@ variable "pod_subnet" {
 }
 
 variable "eth_name" {
-  default = "ens10"
+  default = "eth0"
 }
