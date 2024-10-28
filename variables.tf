@@ -63,11 +63,11 @@ variable "k8s_repo_version" {
 }
 
 variable "containerd_version" {
-  default = "1.7.2-0ubuntu1~22.04.1"
+  default = "1.7.12-0ubuntu4.1"
 }
 
 variable "keepalived_version" {
-  default = "1:2.2.4-0.2build1"
+  default = "1:2.2.8-1build2"
 }
 
 variable "cilium_version" {
