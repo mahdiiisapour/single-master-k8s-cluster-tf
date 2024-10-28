@@ -15,7 +15,7 @@ variable "server_type" {
 }
 
 variable "os_type" {
-  default = "ubuntu-22.04"
+  default = "ubuntu-24.04"
 }
 
 variable "services_protocol" {
@@ -51,15 +51,15 @@ variable "cluster_name" {
 }
 
 variable "kubernetes_package_version" {
-  default = "1.30.1-1.1"
+  default = "1.31.2-1.1"
 }
 
 variable "kubernetes_version" {
-  default = "1.30.1"
+  default = "1.31.1"
 }
 
 variable "k8s_repo_version" {
-  default = "1.30"
+  default = "1.31"
 }
 
 variable "containerd_version" {
@@ -71,15 +71,15 @@ variable "keepalived_version" {
 }
 
 variable "cilium_version" {
-  default = "1.15.5"
+  default = "1.16.3"
 }
 
 variable "ingress_nginx_version" {
-  default = "4.10.1"
+  default = "4.11.3"
 }
 
 variable "helm_version" {
-  default = "3.15.1"
+  default = "3.16.2"
 }
 
 variable "ip_range" {
