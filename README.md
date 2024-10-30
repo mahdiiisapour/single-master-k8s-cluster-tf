@@ -13,7 +13,7 @@
 #### Updating Variables
 'variable.tf'
 
-##### important ones are:
+###### important ones are:
 `location`
 
 `server_type`
