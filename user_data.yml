@@ -1,6 +1,6 @@
 #cloud-config
 users:
-  - name: itman
+  - name: root
     gecos: Ansible User
     groups: users,admin,wheel
     sudo: ALL=(ALL) NOPASSWD:ALL

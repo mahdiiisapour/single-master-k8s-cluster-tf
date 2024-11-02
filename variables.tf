@@ -35,11 +35,11 @@ variable "services_workers_port_2" {
 }
 
 variable "remote_usr" {
-  default = "itman"
+  default = "root"
 }
 
 variable "home_dir" {
-  default = "/home/itman"
+  default = "/home/root"
 }
 
 variable "cri_socket" {
