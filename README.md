@@ -1,5 +1,5 @@
 
-### Deploy a Kubernetes HA (multi-masters) Cluster using Terraform/Ansible on Ubuntu - (Hetzner)
+### Deploys a Single master Cluster using Terraform/Ansible on Ubuntu - (Hetzner)
 
 #### First we need to obtain a API token from our Hetzner account.
 
