@@ -81,6 +81,6 @@ resource "null_resource" "fetch_kubeconfig" {
 
   # Fetch kubeconfig to local path
   provisioner "local-exec" {
-    command = "scp -o StrictHostKeyChecking=no root@${hcloud_server.kube-master[0].ipv4_address}:/tmp/kubeconfig ${var.local_kubeconfig_path}"
+    command = "scp -o StrictHostKeyChecking=no root@${hcloud_server.kube-master[0].ipv4_address}:/tmp/kubeconfig ./kubeconfig"
   }
 }
