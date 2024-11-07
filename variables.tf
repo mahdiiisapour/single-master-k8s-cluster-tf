@@ -1,5 +1,10 @@
 variable "hcloud_token" {
-  # default = <your-api-token>
+default = ""
+}
+
+variable "local_kubeconfig_path" {
+  type    = string
+  default = "/root/code/setup-k8s-cluster-hetzner"
 }
 
 variable "location" {
@@ -7,7 +12,7 @@ variable "location" {
 }
 
 variable "instances" {
-  default = "3"
+  default = "1"
 }
 
 variable "server_type" {
@@ -100,4 +105,11 @@ variable "pod_subnet" {
 
 variable "eth_name" {
   default = "eth0"
+}
+variable "master_instances" {
+  default = "1"
+}
+
+variable "worker_instances" {
+  default = "3"
 }

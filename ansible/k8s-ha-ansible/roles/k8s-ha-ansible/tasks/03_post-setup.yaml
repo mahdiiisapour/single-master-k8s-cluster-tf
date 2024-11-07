@@ -7,20 +7,20 @@
         state: restarted
 
     - name: Downloading helm binary
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       ansible.builtin.get_url:
         url: https://get.helm.sh/helm-v{{helm_version}}-linux-amd64.tar.gz
         dest: /tmp/helm-v{{helm_version}}-linux-amd64.tar.gz
 
     - name: Unarchiving helm tgz
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       ansible.builtin.unarchive:
         src: /tmp/helm-v{{helm_version}}-linux-amd64.tar.gz
         dest: /tmp
         remote_src: yes
 
     - name: Copying helm binary into /usr/local/bin/ 
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       become: true
       copy:
         src: /tmp/linux-amd64/helm
@@ -29,33 +29,33 @@
         mode: '0777'
 
     - name: Download cilium helm chart tgz file
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       ansible.builtin.get_url:
         url: https://github.com/cilium/charts/raw/master/cilium-{{cilium_version}}.tgz
         dest: /tmp/cilium-{{cilium_version}}.tgz
 
     - name: Download ingress-nginx helm chart
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       ansible.builtin.get_url:
         url: https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-{{ingress_nginx_version}}/ingress-nginx-{{ingress_nginx_version}}.tgz
         dest: /tmp/ingress-nginx-{{ingress_nginx_version}}.tgz
 
     - name: Unarchive cilium chart
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       ansible.builtin.unarchive:
         src: /tmp/cilium-{{cilium_version}}.tgz
         dest: /tmp
         remote_src: yes
 
     - name: Unarchive ingress-nginx chart
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       ansible.builtin.unarchive:
         src: /tmp/ingress-nginx-{{ingress_nginx_version}}.tgz
         dest: /tmp
         remote_src: yes
 
     - name: Deploy Cilium chart from local path
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       kubernetes.core.helm:
         name: cilium
         chart_ref: /tmp/cilium/
@@ -70,19 +70,19 @@
       delegate_to: localhost
 
     - name: recreate all cluster pods after Cilium installation
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       shell: kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,HOSTNETWORK:.spec.hostNetwork --no-headers=true | grep '<none>' | awk '{print "-n "$1" "$2}' | xargs -L 1 -r kubectl delete pod --force
       ignore_errors: true
 
     - name: Copying custom ingress value file to the first master node
       become: true
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       copy:
         src: files/ingress-nginx-values.yaml
         dest: /tmp/ingress-nginx-values.yaml
 
     - name: Deploy ingress-nginx chart from local path
-      when: inventory_hostname == groups['master_servers'][0]
+      when: inventory_hostname in groups['master_servers']
       kubernetes.core.helm:
         name: ingress-nginx
         chart_ref: /tmp/ingress-nginx
@@ -90,3 +90,4 @@
         create_namespace: true
         values_files:
           - /tmp/ingress-nginx-values.yaml
+

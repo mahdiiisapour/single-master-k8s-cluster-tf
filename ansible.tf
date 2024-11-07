@@ -60,3 +60,27 @@ resource "null_resource" "playbook" {
   }
   depends_on = [ hcloud_server.kube-master, hcloud_server.kube-worker ]
 }
+
+resource "null_resource" "fetch_kubeconfig" {
+  depends_on = [
+    null_resource.playbook,        # Explicitly depend on the playbook to run after it
+  ]
+
+  provisioner "remote-exec" {
+    inline = [
+      "cp /etc/kubernetes/admin.conf /tmp/kubeconfig"
+    ]
+
+    connection {
+      type     = "ssh"
+      host     = hcloud_server.kube-master[0].ipv4_address
+      user     = "root"
+      private_key = file("/root/.ssh/id_rsa")
+    }
+  }
+
+  # Fetch kubeconfig to local path
+  provisioner "local-exec" {
+    command = "scp -o StrictHostKeyChecking=no root@${hcloud_server.kube-master[0].ipv4_address}:/tmp/kubeconfig ${var.local_kubeconfig_path}"
+  }
+}

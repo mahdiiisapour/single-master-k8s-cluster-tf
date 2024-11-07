@@ -4,7 +4,7 @@ resource "hcloud_server" "kube-master" {
   server_type = var.server_type
   location    = var.location
   ssh_keys    = [hcloud_ssh_key.mykey.id]
-  count       = var.instances
+  count       = var.master_instances
   labels = {
     type = "master"
     ansible-group = "master_servers"
@@ -29,7 +29,7 @@ resource "hcloud_server" "kube-worker" {
   server_type = var.server_type
   location    = var.location
   ssh_keys    = [hcloud_ssh_key.mykey.id]
-  count       = var.instances
+  count       = var.worker_instances
   labels = {
     type = "worker"
     ansible-group = "worker_servers"

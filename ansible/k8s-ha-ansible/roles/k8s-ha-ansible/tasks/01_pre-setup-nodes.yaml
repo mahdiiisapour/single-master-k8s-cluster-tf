@@ -1,7 +1,7 @@
 - block:
     - name: Disable swap
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       block:
         - name: Remove swapfile from /etc/fstab
           ansible.builtin.mount:
@@ -24,14 +24,14 @@
 
     - name: modprobe configuration
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       shell: |
               sudo modprobe overlay
               sudo modprobe br_netfilter
 
     - name: Add config for k8s
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       blockinfile:
         path: /etc/sysctl.d/99-kubernetes-cri.conf
         block: |
@@ -42,20 +42,20 @@
 
     - name: Force systemd to reload configs
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.systemd:
         daemon_reload: yes
 
     - name: Upgrade all packages
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.apt:
         name: "*"
         state: latest
 
     - name: Install some packages
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.apt:
         name: "{{ packages }}"
         state: present
@@ -82,14 +82,14 @@
 
     - name: Creting keyrings directory
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       file:
         path: "/etc/apt/keyrings"
         state: directory
         mode: "0755"
 
     - name: Download the public signing key for the Kubernetes package and add repository
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       become: true
       block:
         - name: download gpg kubernetes
@@ -114,14 +114,14 @@
 
     - name: Upgrade all packages
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.apt:
         name: "*"
         state: latest
 
     - name: Install kubelet, kubeadm, and kubectl packages
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.apt:
         name:
           - kubelet={{ kubernetes_package_version }}
@@ -132,7 +132,7 @@
 
     - name: Add config for containerd
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       blockinfile:
         path: /etc/modules-load.d/containerd.conf
         block: |
@@ -142,12 +142,12 @@
 
     - name: Apply added settings via sysctl
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       command: sudo sysctl --system
 
     - name: Install containerd package
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.apt:
         state: present
         name: 
@@ -155,12 +155,12 @@
 
     - name: initiate a default containerd config
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.shell: mkdir /etc/containerd; containerd config default > /etc/containerd/config.toml
       ignore_errors: true
 
     - name: Modify SystemdCgroup setting
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       become: true
       ansible.builtin.lineinfile:
         path: /etc/containerd/config.toml
@@ -168,7 +168,7 @@
         line: '            SystemdCgroup = true'
 
     - name: Modify pause image tag
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       become: true
       ansible.builtin.replace:
         path: /etc/containerd/config.toml
@@ -177,14 +177,14 @@
 
     - name: Add KUBELET_EXTRA_ARGS to kubelet config - Get server IP
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       set_fact:
         server_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
       delegate_to: localhost
 
     - name: Add KUBELET_EXTRA_ARGS to kubelet config
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.lineinfile:
         path: /etc/sysconfig/kubelet
         mode: "0644"
@@ -193,13 +193,13 @@
 
     - name: Just force systemd to reload configs
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.systemd:
         daemon_reload: yes
 
     - name: Start containerd/kubelet service
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       service:
         name: "{{item}}"
         enabled: true
@@ -235,7 +235,7 @@
 
     - name: Force systemd to reload configs
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.systemd:
         daemon_reload: yes
 
@@ -249,7 +249,8 @@
 
     - name: Prevent kubectl, kubelet, kubeadm, cri-tools, kubernetes-cni, and containerd.io from being updated
       become: true
-      when: inventory_hostname in ((groups['master_servers'] + groups['worker_servers']) | unique )
+      when: inventory_hostname in groups['master_servers'] or inventory_hostname in groups['worker_servers']
       ansible.builtin.shell:
         cmd: >
           apt-mark hold kubectl kubelet kubeadm cri-tools kubernetes-cni containerd
+
