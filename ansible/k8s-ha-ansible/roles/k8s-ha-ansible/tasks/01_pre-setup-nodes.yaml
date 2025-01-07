@@ -151,7 +151,7 @@
       ansible.builtin.apt:
         state: present
         name: 
-          - containerd={{ containerd_version }}
+          - containerd
 
     - name: initiate a default containerd config
       become: true

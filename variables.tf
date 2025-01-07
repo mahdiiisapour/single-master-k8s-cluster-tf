@@ -1,10 +1,10 @@
 variable "hcloud_token" {
-default = ""
+default = "BLW9bnuUaqyqAwhVq2jn0pbM3FX3Rjyj6deoOeREZmAN2tIzRS5SgQcY4scJHBB7"
 }
 
 variable "local_kubeconfig_path" {
   type    = string
-  default = "/root/code/setup-k8s-cluster-hetzner"
+  default = "/root/code/single-master-k8s-cluster-tf"
 }
 
 variable "location" {
@@ -67,9 +67,10 @@ variable "k8s_repo_version" {
   default = "1.31"
 }
 
-variable "containerd_version" {
-  default = "1.7.12-0ubuntu4.1"
-}
+# variable "containerd_version" {
+#   default = ""
+# //1.7.12-0ubuntu4.1
+# }
 
 variable "keepalived_version" {
   default = "1:2.2.8-1build2"
