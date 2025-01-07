@@ -44,7 +44,6 @@ resource local_file ansible_vars {
       kubernetes_package_version : ${var.kubernetes_package_version}
       k8s_repo_version: '${var.k8s_repo_version}'
       helm_version : ${var.helm_version}
-      containerd_version : ${var.containerd_version}
       cilium_version : ${var.cilium_version}
       keepalived_version : ${var.keepalived_version}
       ingress_nginx_version: ${var.ingress_nginx_version}
