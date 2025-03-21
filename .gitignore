@@ -1,4 +1,37 @@
-.terraform
-terraform.tfstate
-terraform.tfstate.backup
+# Terraform files to ignore
+# Local .terraform directories
+.terraform/
+.terraform.d/
 
+# .tfstate files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfstate.lock.info
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform lock files
+.terraform.lock.hcl
+
+# Terraform plan output
+tfplan
+*.tfplan
+
+# Variable files that might contain sensitive data
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Local environment variable files
+.envrc
+.env
