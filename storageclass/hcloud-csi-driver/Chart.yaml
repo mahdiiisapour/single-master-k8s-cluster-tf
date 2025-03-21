@@ -1,0 +1,29 @@
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/signKey: |
+    fingerprint: F4A091E1F243C3748FFF661A8FC3060F80C31A0A
+    url: https://keys.openpgp.org/vks/v1/by-fingerprint/F4A091E1F243C3748FFF661A8FC3060F80C31A0A
+apiVersion: v2
+appVersion: 1.6.0
+dependencies:
+- name: common
+  repository: https://charts.bitnami.com/bitnami
+  version: 1.11.*
+description: Community Helm Chart for installing the Hetzner Cloud CSI drivers in
+  your Kubernetes cluster
+icon: https://gitlab.com/MatthiasLohr/hcloud-csi-driver-helm-chart/-/raw/main/logo.png
+keywords:
+- hetzner
+- hcloud
+- hcloud-csi-driver
+- csi-driver
+maintainers:
+- email: mail@mlohr.com
+  name: Matthias Lohr
+  url: https://mlohr.com/
+name: hcloud-csi-driver
+sources:
+- https://gitlab.com/MatthiasLohr/hcloud-csi-driver-helm-chart
+- https://github.com/hetznercloud/csi-driver
+type: application
+version: 2.2.1
