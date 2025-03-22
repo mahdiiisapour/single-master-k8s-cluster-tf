@@ -3,6 +3,7 @@
 .terraform/
 .terraform.d/
 
+variables.tf
 # .tfstate files
 *.tfstate
 *.tfstate.*
