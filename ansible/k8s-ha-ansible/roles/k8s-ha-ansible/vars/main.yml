@@ -1,0 +1,17 @@
+VIP_MASTERS : 10.0.1.20
+VIP_WORKERS : 10.0.1.21
+APISERVER_SRC_PORT : 8443
+cp_endpoint : '162.55.157.83:8443'
+home_directory : /home/root
+remote_username : root
+cri_socket : unix:///var/run/containerd/containerd.sock
+pod_subnet : 10.244.0.0/20
+cluster_name : cluster.local
+kubernetes_version : 1.31.1
+kubernetes_package_version : 1.31.2-1.1
+k8s_repo_version: '1.31'
+helm_version : 3.16.2
+cilium_version : 1.16.3
+keepalived_version : 1:2.2.8-1build2
+ingress_nginx_version: 4.11.3
+eth_name: eth0

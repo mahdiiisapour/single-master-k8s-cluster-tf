@@ -2,7 +2,7 @@
 # Local .terraform directories
 .terraform/
 .terraform.d/
-
+kubeconfig
 variables.tf
 # .tfstate files
 *.tfstate
