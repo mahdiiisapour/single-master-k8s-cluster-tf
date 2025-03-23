@@ -19,7 +19,7 @@ global:
   ##
   imagePullSecrets: []
   defaultStorageClass: ""
-  storageClass: ""
+  storageClass: "hcloud-volumes"
   ## Security parameters
   ##
   security:
@@ -1117,7 +1117,7 @@ applicationSet:
     ingress:
       ## @param applicationSet.webhook.ingress.enabled Enable an ingress resource for Webhooks
       ##
-      enabled: false
+      enabled: true
       ## DEPRECATED: Use server.ingress.annotations instead of server.ingress.certManager
       ## certManager: false
       ##
@@ -1129,11 +1129,11 @@ applicationSet:
       labels: {}
       ## @param applicationSet.webhook.ingress.ingressClassName Defines which ingress controller will implement the resource
       ##
-      ingressClassName: ""
+      ingressClassName: "nginx"
       ## @param applicationSet.webhook.ingress.hostname Ingress hostname for the Argo CD applicationSet ingress
       ## Hostname must be provided if Ingress is enabled.
       ##
-      hostname: ""
+      hostname: "argocd.91.99.23.24.nip.io"
       ## @param applicationSet.webhook.ingress.path Argo CD applicationSet ingress path
       ##
       path: /api/webhook
@@ -2111,17 +2111,17 @@ server:
   ## @param server.config [object] Argo CD server configuration that will end on the argocd-cm Config Map
   ## Ref: https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/
   ## E.g:
-  ## repositories:
-  ##   - url: git@github.com:group/repo.git
-  ##     sshPrivateKeySecret:
-  ##       name: secret-name
-  ##       key: sshPrivateKey
-  ##   - type: helm
-  ##     url: https://charts.helm.sh/stable
-  ##     name: stable
-  ##   - type: helm
-  ##     url: https://argoproj.github.io/argo-helm
-  ##     name: argo
+  repositories:
+    - url: git@github.com:mahdiiisapour/aws-eks.git
+      sshPrivateKeySecret:
+        name: github-ssh-key
+        key: sshPrivateKey
+    - type: helm
+      url: https://charts.helm.sh/stable
+      name: stable
+    - type: helm
+      url: https://argoproj.github.io/argo-helm
+      name: argo
   ## oidc.config:
   ##   name: AzureAD
   ##   issuer: https://login.microsoftonline.com/TENANT_ID/v2.0
